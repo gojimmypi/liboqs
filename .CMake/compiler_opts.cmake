@@ -17,7 +17,8 @@
 # unknown compiler warnings
 
 include(CheckCCompilerFlag)
-check_c_compiler_flag("-Wa,--noexecstack" CC_SUPPORTS_WA_NOEXECSTACK)
+
+# check_c_compiler_flag("-Wa,--noexecstack" CC_SUPPORTS_WA_NOEXECSTACK)
 
 # This sets the equivalent of -Werror for supported compilers
 # it can be overriden with --compile-no-warnings-as-errors
@@ -26,7 +27,7 @@ set(CMAKE_COMPILE_WARNING_AS_ERROR ${OQS_STRICT_WARNINGS})
 
 if(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.18")
     include(CheckLinkerFlag)
-    check_linker_flag(C "-Wl,-z,noexecstack" LD_SUPPORTS_WL_Z_NOEXECSTACK)
+#    check_linker_flag(C "-Wl,-z,noexecstack" LD_SUPPORTS_WL_Z_NOEXECSTACK)
 elseif(${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.14")
     set(TMP_TESTDIR "${CMAKE_BINARY_DIR}/test_noexecstack")
     file(WRITE "${TMP_TESTDIR}/test.c" "int main() { return 0; }\n")

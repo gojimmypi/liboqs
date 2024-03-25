@@ -13,13 +13,36 @@ if(POLICY CMP0063)
 endif()
 if(POLICY CMP0066)
     cmake_policy(SET CMP0066 NEW)
+#   message(STATUS "skipping cmake_policy(SET CMP0066 NEW)")
 endif()
 if(POLICY CMP0067)
     cmake_policy(SET CMP0067 NEW)
 endif()
 
+if(IDF_TARGET_ARCH MATCHES "xtensa")
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DHAVE_LIBOQS")
+    set(OQS_PERMIT_UNSUPPORTED_ARCHITECTURE true)
+    message(STATUS "PROJECT_SOURCE_DIR = ${PROJECT_SOURCE_DIR}")
+    #set(PROJECT_BINARY_DIR "C:/workspace/wolfssl-gojimmypi-pr/IDE/Espressif/ESP-IDF/examples/wolfssl_test/build/VisualGDB/Debug")
+    set(PROJECT_BINARY_DIR "${COMPONENT_DIR}")
+    set(PROJECT_SOURCE_DIR "${COMPONENT_DIR}")
+else()
+    project(liboqs C ASM)
+endif()
 
-project(liboqs C ASM)
+if (1)
+    get_cmake_property(_variableNames VARIABLES)
+    list (SORT _variableNames)
+    message(STATUS "")
+    message(STATUS "ALL VARIABLES BEGIN")
+    message(STATUS "")
+    foreach (_variableName ${_variableNames})
+        message(STATUS "${_variableName}=${${_variableName}}")
+    endforeach()
+    message(STATUS "")
+    message(STATUS "ALL VARIABLES END")
+    message(STATUS "")
+endif()
 
 option(OQS_DIST_BUILD "Build distributable library with optimized code for several CPU microarchitectures. Enables run-time CPU feature detection." ON)
 option(OQS_BUILD_ONLY_LIB "Build only liboqs and do not expose build targets for tests, documentation, and pretty-printing available." OFF)
@@ -41,7 +64,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # heuristic check to see whether we're running on a RaspberryPi
 if(EXISTS "/opt/vc/include/bcm_host.h")
-	add_definitions( -DOQS_USE_RASPBERRY_PI )
+    add_definitions( -DOQS_USE_RASPBERRY_PI )
 endif()
 
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|amd64|AMD64")
@@ -89,6 +112,8 @@ elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "s390x")
     endif()
 elseif(CMAKE_SYSTEM_PROCESSOR MATCHES "riscv")
     set(ARCH "riscv")
+elseif(IDF_TARGET_ARCH MATCHES "xtensa")
+    message(STATUS "Found liboqs xtensa")
 elseif(OQS_PERMIT_UNSUPPORTED_ARCHITECTURE)
     message(WARNING "Unknown or unsupported processor: " ${CMAKE_SYSTEM_PROCESSOR})
     message(WARNING "Compilation on an unsupported processor should only be used for testing, as it may result an insecure configuration, for example due to variable-time instructions leaking secret information.")
@@ -118,8 +143,8 @@ if(WIN32)
     set(CMAKE_GENERATOR_CC cl)
 endif()
 
-include(.CMake/compiler_opts.cmake)
-include(.CMake/alg_support.cmake)
+include(${COMPONENT_DIR}/.CMake/compiler_opts.cmake)
+include(${COMPONENT_DIR}/.CMake/alg_support.cmake)
 
 if(${OQS_USE_OPENSSL})
     if(NOT DEFINED OPENSSL_ROOT_DIR)
@@ -183,17 +208,23 @@ if(OQS_ENABLE_SIG_SPHINCS)
     set(PUBLIC_HEADERS ${PUBLIC_HEADERS} ${PROJECT_SOURCE_DIR}/src/sig/sphincs/sig_sphincs.h)
 endif()
 ##### OQS_COPY_FROM_UPSTREAM_FRAGMENT_INCLUDE_HEADERS_END
+message(STATUS "PUBLIC_HEADERS = ${PUBLIC_HEADERS}")
+message(STATUS "PROJECT_BINARY_DIR = ${PROJECT_BINARY_DIR}")
+message(STATUS "INTERNAL_HEADERS = ${INTERNAL_HEADERS}")
+message(STATUS "DebugPeek: ${CMAKE_COMMAND} -E copy ${PUBLIC_HEADERS} ${PROJECT_BINARY_DIR}/include/oqs")
+
 execute_process(COMMAND ${CMAKE_COMMAND} -E make_directory ${PROJECT_BINARY_DIR}/include/oqs)
 execute_process(COMMAND ${CMAKE_COMMAND} -E copy ${PUBLIC_HEADERS} ${PROJECT_BINARY_DIR}/include/oqs)
 execute_process(COMMAND ${CMAKE_COMMAND} -E copy ${INTERNAL_HEADERS} ${PROJECT_BINARY_DIR}/include/oqs)
-configure_file(src/oqsconfig.h.cmake ${PROJECT_BINARY_DIR}/include/oqs/oqsconfig.h)
+configure_file("${COMPONENT_DIR}/src/oqsconfig.h.cmake" ${PROJECT_BINARY_DIR}/include/oqs/oqsconfig.h)
 set(PUBLIC_HEADERS ${PUBLIC_HEADERS} ${PROJECT_BINARY_DIR}/include/oqs/oqsconfig.h)
 
-include_directories(${PROJECT_BINARY_DIR}/include)
-add_subdirectory(src)
+message(STATUS "include_directories(${PROJECT_BINARY_DIR}/include")
+# include_directories(${PROJECT_BINARY_DIR}/include)
+# add_subdirectory(${PROJECT_SOURCE_DIR}/src)
 
 if(NOT ${OQS_BUILD_ONLY_LIB})
-    add_subdirectory(tests)
+#    add_subdirectory(tests)
 
     if (NOT CYGWIN)
       find_package(Doxygen)
@@ -228,14 +259,18 @@ endif()
 set(CPACK_DEBIAN_PACKAGE_MAINTAINER "www.openquantumsafe.org")
 include(CPack)
 
-# uninstall target
-if(NOT TARGET uninstall)
-  configure_file(
-    "${CMAKE_CURRENT_SOURCE_DIR}/.CMake/cmake_uninstall.cmake.in"
-    "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
-    IMMEDIATE @ONLY)
+if(IDF_TARGET_ARCH MATCHES "xtensa")
+    message(STATUS "No uninstall for Xtensa")
+else()
+    # uninstall target
+    if(NOT TARGET uninstall)
+      configure_file(
+        "${CMAKE_CURRENT_SOURCE_DIR}/.CMake/cmake_uninstall.cmake.in"
+        "${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake"
+        IMMEDIATE @ONLY)
 
-  add_custom_target(uninstall
-    COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
+      add_custom_target(uninstall
+        COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_BINARY_DIR}/cmake_uninstall.cmake)
+    endif()
 endif()
 
